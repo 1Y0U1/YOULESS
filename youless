@@ -175,7 +175,10 @@ elsif options[:iface] && options[:target] && options[:bssid] && options[:count]
 elsif options[:iface] && options[:mode]
   check_mode(iface)
 
+else
+  puts "Interface or Requird Options Not Found! Use -h and see Example".colorize(:red).bold
 end
+
 
 
 if options[:version]
