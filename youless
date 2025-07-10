@@ -60,7 +60,6 @@ scan_file = "wifi_scan"
           opts.on("Example: ruby youless -i <interface> -t <target> -b <router_bssid> --deauth 10")
           opts.on("Example: ruby youless -i <interface> -t all -b <router_bssid> --deauth 10")
           opts.on("Example: ruby youless -i <interface> -c")
-          opts.on("Example: ruby youless -i <interface> --bssid")
 
 
        	end.parse!
