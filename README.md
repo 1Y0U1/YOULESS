@@ -17,7 +17,7 @@ For educational and authorized auditing purposes **only**.
 
 git clone https://github.com/1Y0U1/YOULESS.git
 
-cd youless
+cd YOULESS
 
 bash setup.sh
 
